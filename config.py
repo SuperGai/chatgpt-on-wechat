@@ -185,14 +185,26 @@ def load_config():
         if name in available_setting:
             logger.info("[INIT] override config by environ args: {}={}".format(name, value))
             try:
-                config[name] = eval(value)
-            except:
-                if value == "false":
+                # 安全地解析环境变量值
+                if value.lower() == "false":
                     config[name] = False
-                elif value == "true":
+                elif value.lower() == "true":
                     config[name] = True
+                elif value.isdigit():
+                    config[name] = int(value)
+                elif value.replace('.', '', 1).isdigit():
+                    config[name] = float(value)
+                elif value.startswith('[') and value.endswith(']'):
+                    # 安全地解析列表，使用json.loads替代eval
+                    config[name] = json.loads(value)
+                elif value.startswith('{') and value.endswith('}'):
+                    # 安全地解析字典，使用json.loads替代eval
+                    config[name] = json.loads(value)
                 else:
                     config[name] = value
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning("[INIT] Failed to parse environ value for {}: {}, using as string".format(name, e))
+                config[name] = value
 
     if config.get("debug", False):
         logger.setLevel(logging.DEBUG)
